@@ -34,28 +34,47 @@ def read_root():
         "items_in_index": 0
     }
 
+import hashlib
+
+UPLOADED_HASHES = set()
+
 @app.post("/analyze")
 async def analyze_video(video_file: UploadFile = File(...)):
-    print(f"Received for analysis (MOCK): {video_file.filename}")
+    print(f"Received for analysis (HASH): {video_file.filename}")
     video_bytes = await video_file.read()
     
-    # MOCK RARITY
-    random_score = random.uniform(0.60, 0.99)
+    # Calculate SHA-256 hash of the video file
+    file_hash = hashlib.sha256(video_bytes).hexdigest()
     
+    if file_hash in UPLOADED_HASHES:
+        # Duplicate detected
+        score = random.uniform(0.05, 0.15)
+        is_unique = False
+        closest_match = f"hash:{file_hash[:8]}..."
+    else:
+        # Original video
+        score = random.uniform(0.75, 0.99)
+        is_unique = True
+        closest_match = "None (Original)"
+        
     return {
         "filename": video_file.filename,
-        "is_unique": True,
-        "rarity_score": round(float(random_score), 4),
+        "is_unique": is_unique,
+        "rarity_score": round(float(score), 4),
         "debug_info": {
-            "closest_match_filename": "N/A (Lightweight Mode)",
-            "similarity_score": round(float(1.0 - random_score), 4)
+            "closest_match_filename": closest_match,
+            "similarity_score": round(float(1.0 - score), 4)
         }
     }
 
 @app.post("/add_video")
 async def add_video(video_file: UploadFile = File(...)):
-    print(f"Adding to index (MOCK): {video_file.filename}")
-    return {"message": "Video added (Mocked)", "total_videos": 0}
+    print(f"Adding to index (HASH): {video_file.filename}")
+    video_bytes = await video_file.read()
+    file_hash = hashlib.sha256(video_bytes).hexdigest()
+    UPLOADED_HASHES.add(file_hash)
+    
+    return {"message": "Video added to hash index", "total_videos": len(UPLOADED_HASHES)}
 
 from pydantic import BaseModel
 from web3 import Web3
