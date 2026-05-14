@@ -17,11 +17,10 @@ app = FastAPI(
 # TODO: re-enable CLIP/FAISS on paid tier
 
 # CORS
-origins = ["http://localhost:3000", "http://localhost", "https://minecast.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["https://minecast-k4p6satft-ruzzhdontmiss-projects.vercel.app", "https://minecast.vercel.app", "http://localhost:3000", "http://localhost", "*"],
+    allow_credentials=False, # Must be False if using "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -33,6 +32,10 @@ def read_root():
         "index_status": "Mocked",
         "items_in_index": 0
     }
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "Backend is reachable"}
 
 import hashlib
 
