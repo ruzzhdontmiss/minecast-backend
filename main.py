@@ -1,87 +1,52 @@
-# main.py
-import os
-import random
-
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from web3 import Web3
+from eth_account.messages import encode_defunct
+import hashlib
+import random
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(
-    title="MineCast AI Engine (Lightweight)",
-    description="Analyzes video originality and returns a rarity score. (MOCK FOR FREE TIER)",
-    version="0.3.0",
-)
+app = FastAPI()
 
-# TODO: re-enable CLIP/FAISS on paid tier
-
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://minecast-k4p6satft-ruzzhdontmiss-projects.vercel.app", "https://minecast.vercel.app", "http://localhost:3000", "http://localhost", "*"],
-    allow_credentials=False, # Must be False if using "*"
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {
-        "message": "MineCast AI Engine Online (Lightweight Mode)",
-        "index_status": "Mocked",
-        "items_in_index": 0
-    }
+video_hashes = set()
 
 @app.get("/health")
-def health_check():
-    return {"status": "ok", "message": "Backend is reachable"}
-
-import hashlib
-
-UPLOADED_HASHES = set()
+def health():
+    return {"status": "ok"}
 
 @app.post("/analyze")
-async def analyze_video(video_file: UploadFile = File(...)):
-    print(f"Received for analysis (HASH): {video_file.filename}")
-    video_bytes = await video_file.read()
+async def analyze(file: UploadFile = File(...)):
+    contents = await file.read()
+    file_hash = hashlib.md5(contents).hexdigest()
     
-    # Calculate SHA-256 hash of the video file
-    file_hash = hashlib.sha256(video_bytes).hexdigest()
-    
-    if file_hash in UPLOADED_HASHES:
-        # Duplicate detected
-        score = random.uniform(0.05, 0.15)
-        is_unique = False
-        closest_match = f"hash:{file_hash[:8]}..."
+    if file_hash in video_hashes:
+        score = random.randint(5, 15)
+        tier = "Common"
+        is_duplicate = True
     else:
-        # Original video
-        score = random.uniform(0.75, 0.99)
-        is_unique = True
-        closest_match = "None (Original)"
-        
-    return {
-        "filename": video_file.filename,
-        "is_unique": is_unique,
-        "rarity_score": round(float(score), 4),
-        "debug_info": {
-            "closest_match_filename": closest_match,
-            "similarity_score": round(float(1.0 - score), 4)
-        }
-    }
-
-@app.post("/add_video")
-async def add_video(video_file: UploadFile = File(...)):
-    print(f"Adding to index (HASH): {video_file.filename}")
-    video_bytes = await video_file.read()
-    file_hash = hashlib.sha256(video_bytes).hexdigest()
-    UPLOADED_HASHES.add(file_hash)
+        video_hashes.add(file_hash)
+        score = random.randint(75, 99)
+        tier = "Legendary" if score > 90 else "Rare"
+        is_duplicate = False
     
-    return {"message": "Video added to hash index", "total_videos": len(UPLOADED_HASHES)}
-
-from pydantic import BaseModel
-from web3 import Web3
-from eth_account.messages import encode_defunct
+    return {
+        "rarity_score": score,
+        "tier": tier,
+        "is_duplicate": is_duplicate,
+        "message": "Duplicate detected" if is_duplicate else "Original content"
+    }
 
 class ClaimRequest(BaseModel):
     wallet_address: str
