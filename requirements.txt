@@ -10,3 +10,5 @@ transformers
 torch
 Pillow
 web3
+opencv-python-headless
+librosa
