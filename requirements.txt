@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-multipart
+numpy
+python-dotenv
+supabase
+faiss-cpu
+moviepy
+transformers
+torch
+Pillow
+web3
